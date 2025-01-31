@@ -1,5 +1,5 @@
 # 文字コードをUTF-8に設定（コマンドプロンプトやPowerShellの文字化け対策）
-chcp 65001
+# chcp 65001
 
 # WLANのステータス情報を取得し、ハッシュテーブルに格納するクラス
 class VerifyWlanStatus {
@@ -44,10 +44,18 @@ class VerifyWlanStatus {
     [hashtable] GetMap() {
         return $this.map
     }
+
+    [void]CheckAP([string]$mac) {
+        If($mac -eq $this.map["AP BSSID"]){
+            Write-Host "OK" 
+        }else{
+            Write-Host "NG" 
+        }     
+    }
 }
 
 # クラスをインスタンス化し、WLAN情報を取得
 $networkMap = [VerifyWlanStatus]::new()
 
-# WLAN情報を表示
-$networkMap.GetMap()
+$mac = Read-Host "Please enter the MAC address of the target AP" 
+$networkMap.CheckAP($mac)
