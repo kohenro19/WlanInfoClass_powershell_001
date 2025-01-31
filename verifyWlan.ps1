@@ -1,24 +1,53 @@
-# 文字コードをUTF-8にする
+# 文字コードをUTF-8に設定（コマンドプロンプトやPowerShellの文字化け対策）
 chcp 65001
 
-$result = netsh wlan show interfaces
-$result = $result -replace "There is \d+ interface on the system:\s*", ""
-$result = $result -replace "\s*:\s", "="
+# WLANのステータス情報を取得し、ハッシュテーブルに格納するクラス
+class VerifyWlanStatus {
+    # WLAN情報を格納するハッシュテーブル
+    [hashtable]$map
 
-$filteredText = $result -split "`n" | Where-Object { $_ -match '\S' }
-$filteredText | ForEach-Object { Write-Output $_ }
+    # コンストラクタ
+    VerifyWlanStatus() {
+        # ハッシュテーブルを初期化
+        $this.map = @{}
 
-# 空白を削除し、ハッシュテーブルに変換
-$map = @{}
-$filteredText -split "`n" | ForEach-Object {
-    $_ = $_.Trim() # 前後の空白を削除
-    if ($_ -match "^(.*?)=(.*)$") {
-        $key = $matches[1].Trim()
-        $value = $matches[2].Trim()
-        $map[$key] = $value
+        # `netsh wlan show interfaces` コマンドを実行して、Wi-Fiインターフェース情報を取得
+        $getWlanStatus = netsh wlan show interfaces
+
+        # "There is X interface on the system:" の部分を削除（Xは数値）
+        $result = $getWlanStatus -replace "There is \d+ interface on the system:\s*", ""
+
+        # "項目名 : 値" の形式を "項目名=値" に変換（空白を削除）
+        $result = $result -replace "\s*:\s", "="
+
+        # 空白行を削除し、データのある行だけを取得
+        $filteredText = $result -split "`n" | Where-Object { $_ -match '\S' }
+
+        # フィルタリングした各行を処理
+        $filteredText | ForEach-Object {
+            # 行の前後の空白を削除
+            $_ = $_.Trim()
+
+            # "キー=値" の形式に一致するかチェック
+            if ($_ -match "^(.*?)=(.*)$") {
+                # キーと値を取得し、それぞれの前後の空白を削除
+                $key = $matches[1].Trim()
+                $value = $matches[2].Trim()
+
+                # ハッシュテーブルに追加
+                $this.map[$key] = $value
+            }
+        }
+    }
+
+    # ハッシュテーブル（WLAN情報）を取得するメソッド
+    [hashtable] GetMap() {
+        return $this.map
     }
 }
 
-# ハッシュテーブルの中身を表示
-$map
+# クラスをインスタンス化し、WLAN情報を取得
+$networkMap = [VerifyWlanStatus]::new()
 
+# WLAN情報を表示
+$networkMap.GetMap()
