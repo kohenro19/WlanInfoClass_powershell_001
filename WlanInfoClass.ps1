@@ -2,11 +2,13 @@
 class WlanInfoClass {
     # WLAN情報を格納するハッシュテーブル
     [hashtable]$wlanInfo
+    [string[]]$singleApInfo
 
     # コンストラクタ
     WlanInfoClass() {
         # ハッシュテーブルを初期化
         $this.wlanInfo = @{}
+        $this.singleApInfo = @()
 
         # `netsh wlan show interfaces` コマンドを実行して、Wi-Fiインターフェース情報を取得
         $originalWlanInfo = netsh wlan show interfaces
@@ -35,11 +37,28 @@ class WlanInfoClass {
                 $this.wlanInfo[$key] = $value
             }
         }
+
+        # アクセスポイントの一覧を読み取る
+        $apList = "apList.csv"
+        if (Test-Path $apList) {
+            $reader = New-Object System.IO.StreamReader($apList)
+            while (($line = $reader.ReadLine()) -ne $null) {
+                $this.singleApInfo += $line.Split(",")
+            }
+            $reader.Close()
+        } else {
+            Write-Host "Warning: apList.csv not found."
+        }
+
     }
 
     # ハッシュテーブル（WLAN情報）を取得するメソッド
     [hashtable] getWlanInfo() {
         return $this.WlanInfo
+    }
+
+    [string] getApList() {
+        return $this.singleApInfo[0]
     }
 
     [void]confirmIfTargetAP([string]$enterWlanInfo) {
@@ -56,3 +75,4 @@ $wlaninfo = [WlanInfoClass]::new()
 
 $enterWlanInfo = Read-Host "Please enter the MAC address of the target AP" 
 $wlaninfo.confirmIfTargetAP($enterWlanInfo)
+$wlaninfo.getApList()
