@@ -2,13 +2,13 @@
 class WlanInfoClass {
     # WLAN情報を格納するハッシュテーブル
     [hashtable]$wlanInfo
-    [string[]]$singleApInfo
+    [string[]]$matchedLineWithSSID
 
     # コンストラクタ
     WlanInfoClass() {
         # ハッシュテーブルを初期化
         $this.wlanInfo = @{}
-        $this.singleApInfo = @()
+        $this.matchedLineWithSSID = @()
 
         # `netsh wlan show interfaces` コマンドを実行して、Wi-Fiインターフェース情報を取得
         $originalWlanInfo = netsh wlan show interfaces
@@ -39,40 +39,39 @@ class WlanInfoClass {
         }
 
         # アクセスポイントの一覧を読み取る
-        $apList = "apList.csv"
-        if (Test-Path $apList) {
-            $reader = New-Object System.IO.StreamReader($apList)
-            while (($line = $reader.ReadLine()) -ne $null) {
-                $this.singleApInfo += $line.Split(",")
-            }
-            $reader.Close()
-        } else {
-            Write-Host "Warning: apList.csv not found."
-        }
+        $apTable = Import-Csv -Path "apTable.csv"
 
+        # Country = Japan の行から Name だけを取り出す
+        $this.matchedLineWithSSID = $apTable | Where-Object { $_.SSID -eq $this.wlaninfo["SSID"] }
+
+        # 結果表示
+        $this.matchedLineWithSSID
     }
 
-    # ハッシュテーブル（WLAN情報）を取得するメソッド
-    [hashtable] getWlanInfo() {
-        return $this.WlanInfo
-    }
+    getMatchedLineWithSSID() {
+        # 1行を取り出す（今回は1つしかない前提）
+        $line = $this.matchedLineWithSSID
 
-    [string] getApList() {
-        return $this.singleApInfo[0]
-    }
+        # 文字列をオブジェクトに変換
+        # 1. @{...} を除去
+        $clean = $line -replace '^@{', '' -replace '}$', ''
 
-    [void]confirmIfTargetAP([string]$enterWlanInfo) {
-        If($enterWlanInfo -eq $this.WlanInfo["AP BSSID"]){
-            Write-Host "OK" 
-        }else{
-            Write-Host "NG" 
-        }     
+        # 2. ; 区切りを改行に（ConvertFrom-StringData風）
+        $formatted = $clean -replace '; ', "`n"
+
+        # 3. 文字列をハッシュテーブルに変換
+        $ht = $formatted | ConvertFrom-StringData
+
+        # 4. GATEWAYを返す
+        # return $ht["GATEWAY"]
+        $gateway = $ht["GATEWAY"]
+        ping $gateway | Out-File -FilePath "ping_${gateway}_result.txt" -Encoding utf8
+
     }
 }
 
 # クラスをインスタンス化し、WLAN情報を取得
 $wlaninfo = [WlanInfoClass]::new()
 
-$enterWlanInfo = Read-Host "Please enter the MAC address of the target AP" 
-$wlaninfo.confirmIfTargetAP($enterWlanInfo)
-$wlaninfo.getApList()
+
+$wlaninfo.getMatchedLineWithSSID()
