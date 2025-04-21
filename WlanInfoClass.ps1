@@ -1,103 +1,101 @@
-# WLAN‚ÌƒXƒe[ƒ^ƒXî•ñ‚ğæ“¾‚µAƒnƒbƒVƒ…ƒe[ƒuƒ‹‚ÉŠi”[‚·‚éƒNƒ‰ƒX
+# WLANã®ã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹æƒ…å ±ã‚’å–å¾—ã—ã€ãƒãƒƒã‚·ãƒ¥ãƒ†ãƒ¼ãƒ–ãƒ«ã«æ ¼ç´ã™ã‚‹ã‚¯ãƒ©ã‚¹
 class WlanInfoClass {
-    # WLANî•ñ‚ğŠi”[‚·‚éƒnƒbƒVƒ…ƒe[ƒuƒ‹
+    # WLANæƒ…å ±ã‚’æ ¼ç´ã™ã‚‹ãƒãƒƒã‚·ãƒ¥ãƒ†ãƒ¼ãƒ–ãƒ«
     [hashtable]$wlanInfo
     [string[]]$matchedLineWithSSID
 
-    # ƒRƒ“ƒXƒgƒ‰ƒNƒ^
+    # ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
     WlanInfoClass() {
-        # ƒnƒbƒVƒ…ƒe[ƒuƒ‹‚ğ‰Šú‰»
+
+        # æ–‡å­—åŒ–ã‘å¯¾ç­–
+        [Console]::OutputEncoding = [System.Text.Encoding]::GetEncoding('utf-8')
+
+        # ãƒãƒƒã‚·ãƒ¥ãƒ†ãƒ¼ãƒ–ãƒ«ã‚’åˆæœŸåŒ–
         $this.wlanInfo = @{}
         $this.matchedLineWithSSID = @()
 
-        # `netsh wlan show interfaces` ƒRƒ}ƒ“ƒh‚ğÀs‚µ‚ÄAWi-FiƒCƒ“ƒ^[ƒtƒF[ƒXî•ñ‚ğæ“¾
+        # `netsh wlan show interfaces` ã‚³ãƒãƒ³ãƒ‰ã‚’å®Ÿè¡Œã—ã¦ã€Wi-Fiã‚¤ãƒ³ã‚¿ãƒ¼ãƒ•ã‚§ãƒ¼ã‚¹æƒ…å ±ã‚’å–å¾—
         $originalWlanInfo = netsh wlan show interfaces
 
-        # "There is X interface on the system:" ‚Ì•”•ª‚ğíœiX‚Í”’lj
+        # "There is X interface on the system:" ã®éƒ¨åˆ†ã‚’å‰Šé™¤ï¼ˆXã¯æ•°å€¤ï¼‰
         $modifiedWlanInfo = $originalWlanInfo -replace "There is \d+ interface on the system:\s*", ""
 
-        # "€–Ú–¼ : ’l" ‚ÌŒ`®‚ğ "€–Ú–¼=’l" ‚É•ÏŠ·i‹ó”’‚ğíœj
+        # "é …ç›®å : å€¤" ã®å½¢å¼ã‚’ "é …ç›®å=å€¤" ã«å¤‰æ›ï¼ˆç©ºç™½ã‚’å‰Šé™¤ï¼‰
         $modifiedWlanInfo = $modifiedWlanInfo -replace "\s*:\s", "="
 
-        # ‹ó”’s‚ğíœ‚µAƒf[ƒ^‚Ì‚ ‚és‚¾‚¯‚ğæ“¾
+        # ç©ºç™½è¡Œã‚’å‰Šé™¤ã—ã€ãƒ‡ãƒ¼ã‚¿ã®ã‚ã‚‹è¡Œã ã‘ã‚’å–å¾—
         $modifiedWlanInfo = $modifiedWlanInfo -split "`n" | Where-Object { $_ -match '\S' }
 
-        # ƒtƒBƒ‹ƒ^ƒŠƒ“ƒO‚µ‚½Šes‚ğˆ—
+        # ãƒ•ã‚£ãƒ«ã‚¿ãƒªãƒ³ã‚°ã—ãŸå„è¡Œã‚’å‡¦ç†
         $modifiedWlanInfo | ForEach-Object {
-            # s‚Ì‘OŒã‚Ì‹ó”’‚ğíœ
+            # è¡Œã®å‰å¾Œã®ç©ºç™½ã‚’å‰Šé™¤
             $_ = $_.Trim()
 
-            # "ƒL[=’l" ‚ÌŒ`®‚Éˆê’v‚·‚é‚©ƒ`ƒFƒbƒN
+            # "ã‚­ãƒ¼=å€¤" ã®å½¢å¼ã«ä¸€è‡´ã™ã‚‹ã‹ãƒã‚§ãƒƒã‚¯
             if ($_ -match "^(.*?)=(.*)$") {
-                # ƒL[‚Æ’l‚ğæ“¾‚µA‚»‚ê‚¼‚ê‚Ì‘OŒã‚Ì‹ó”’‚ğíœ
+                # ã‚­ãƒ¼ã¨å€¤ã‚’å–å¾—ã—ã€ãã‚Œãã‚Œã®å‰å¾Œã®ç©ºç™½ã‚’å‰Šé™¤
                 $key = $matches[1].Trim()
                 $value = $matches[2].Trim()
 
-                # ƒnƒbƒVƒ…ƒe[ƒuƒ‹‚É’Ç‰Á
+                # ãƒãƒƒã‚·ãƒ¥ãƒ†ãƒ¼ãƒ–ãƒ«ã«è¿½åŠ 
                 $this.wlanInfo[$key] = $value
             }
         }
 
-        # ƒAƒNƒZƒXƒ|ƒCƒ“ƒg‚Ìˆê——‚ğ“Ç‚İæ‚é
+        # ã‚¢ã‚¯ã‚»ã‚¹ãƒã‚¤ãƒ³ãƒˆã®ä¸€è¦§ã‚’èª­ã¿å–ã‚‹
         $apTable = Import-Csv -Path "apTable.csv"
 
-        # Country = Japan ‚Ìs‚©‚ç Name ‚¾‚¯‚ğæ‚èo‚·
+        # Country = Japan ã®è¡Œã‹ã‚‰ Name ã ã‘ã‚’å–ã‚Šå‡ºã™
         $this.matchedLineWithSSID = $apTable | Where-Object { $_.SSID -eq $this.wlaninfo["SSID"] }
-
-        # Œ‹‰Ê•\¦
-        $this.matchedLineWithSSID
     }
 
-    getMatchedLineWithSSID() {
-        # 1s‚ğæ‚èo‚·i¡‰ñ‚Í1‚Â‚µ‚©‚È‚¢‘O’ñj
-        $line = $this.matchedLineWithSSID
+    excutePingToGateway() {
+        # 1è¡Œã‚’å–ã‚Šå‡ºã™ï¼ˆä»Šå›ã¯1ã¤ã—ã‹ãªã„å‰æï¼‰
+        $lineExtractedFromSSID = $this.matchedLineWithSSID
 
-        # •¶š—ñ‚ğƒIƒuƒWƒFƒNƒg‚É•ÏŠ·
-        # 1. @{...} ‚ğœ‹
-        $clean = $line -replace '^@{', '' -replace '}$', ''
+        # æ–‡å­—åˆ—ã‚’ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã«å¤‰æ›
+        # 1. @{...} ã‚’é™¤å»
+        $lineExtractedFromSSID = $lineExtractedFromSSID -replace '^@{', '' -replace '}$', ''
 
-        # 2. ; ‹æØ‚è‚ğ‰üs‚ÉiConvertFrom-StringData•—j
-        $formatted = $clean -replace '; ', "`n"
+        # 2. ; åŒºåˆ‡ã‚Šã‚’æ”¹è¡Œã«ï¼ˆConvertFrom-StringDataé¢¨ï¼‰
+        $lineExtractedFromSSID = $lineExtractedFromSSID -replace '; ', "`n"
 
-        # 3. •¶š—ñ‚ğƒnƒbƒVƒ…ƒe[ƒuƒ‹‚É•ÏŠ·
-        $ht = $formatted | ConvertFrom-StringData
+        # 3. æ–‡å­—åˆ—ã‚’ãƒãƒƒã‚·ãƒ¥ãƒ†ãƒ¼ãƒ–ãƒ«ã«å¤‰æ›
+        $lineExtractedFromSSID = $lineExtractedFromSSID | ConvertFrom-StringData
 
-        # 4. GATEWAY‚ğ•Ô‚·
-        # return $ht["GATEWAY"]
-        $gateway = $ht["GATEWAY"]
-        # ping $gateway | Out-File -FilePath "ping_${gateway}_result.txt" -Encoding utf8
+        # 4. GATEWAYã‚’è¿”ã™
+        $gateway = $lineExtractedFromSSID["GATEWAY"]
+        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $logFile = "ping_result-$gateway.txt"
+        $count = 10
 
-        $logFile = "ping_result.txt"
-        $count = 20
 
         for ($i = 1; $i -le $count; $i++) {
-            $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-            # $output = ping.exe -n 1 $gateway
-            $output = Test-Connection $gateway -Count 1
+            # $status = "Success"
+            # $latency = 0
+            $pingResult = Test-Connection $gateway -Count 1
+            $status = $pingResult.Status
+            $latency = $pingResult.Latency
 
-            # foreach ($output in $outputs) {
-                if ($output -match "ŠÔ = (\d+)ms") {
-                    $rtt = [int]$matches[1]
-                    if ($rtt -ge 300) {
-                        $status = "NG"
-                    } else {
-                        $status = "OK"
-                    }
-                    "$timestamp $gateway $status - ‰“šŠÔ: $rtt ms" | Out-File -Append $logFile
-                } elseif ($output -match "—v‹‚ªƒ^ƒCƒ€ƒAƒEƒg") {
-                    "$timestamp $gateway NG - ‰“š‚È‚µiƒ^ƒCƒ€ƒAƒEƒgj" | Out-File -Append $logFile
+            if ($status -eq "Success") {
+                if ($latency -ge 300) {
+                    Write-Host "NG"
                 } else {
-                    "$timestamp $gateway NG - ‚»‚Ì‘¼‚ÌƒGƒ‰[" | Out-File -Append $logFile
+                    Write-Host "OK"
+                    "$timestamp $gateway $status - å¿œç­”æ™‚é–“: $latency ms" | Out-File -Append $logFile
                 }
-            # }
+                "$timestamp $gateway $status - å¿œç­”æ™‚é–“: $latency ms" | Out-File -Append $logFile
+            } elseif ($status -eq "TimedOut") {
+                "$timestamp $gateway NG - å¿œç­”ãªã—ï¼ˆã‚¿ã‚¤ãƒ ã‚¢ã‚¦ãƒˆï¼‰" | Out-File -Append $logFile
+            } else {
+                "$timestamp $gateway NG - ãã®ä»–ã®ã‚¨ãƒ©ãƒ¼" | Out-File -Append $logFile
+            }
             Start-Sleep -Seconds 1
-}
-
-
+        }
     }
 }
 
-# ƒNƒ‰ƒX‚ğƒCƒ“ƒXƒ^ƒ“ƒX‰»‚µAWLANî•ñ‚ğæ“¾
+# ã‚¯ãƒ©ã‚¹ã‚’ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹åŒ–ã—ã€WLANæƒ…å ±ã‚’å–å¾—
 $wlaninfo = [WlanInfoClass]::new()
 
-$wlaninfo.getMatchedLineWithSSID()
+$wlaninfo.excutePingToGateway()
