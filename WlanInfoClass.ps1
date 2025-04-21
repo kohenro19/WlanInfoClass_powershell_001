@@ -6,49 +6,56 @@ class WlanInfoClass {
 
     # コンストラクタ
     WlanInfoClass() {
+        try {
+            # 文字化け対策
+            [Console]::OutputEncoding = [System.Text.Encoding]::GetEncoding('utf-8')
 
-        # 文字化け対策
-        [Console]::OutputEncoding = [System.Text.Encoding]::GetEncoding('utf-8')
+            # ハッシュテーブルを初期化
+            $this.wlanInfo = @{}
+            $this.matchedLineWithSSID = @()
 
-        # ハッシュテーブルを初期化
-        $this.wlanInfo = @{}
-        $this.matchedLineWithSSID = @()
+            # `netsh wlan show interfaces` コマンドを実行して、Wi-Fiインターフェース情報を取得
+            $originalWlanInfo = netsh wlan show interfaces
 
-        # `netsh wlan show interfaces` コマンドを実行して、Wi-Fiインターフェース情報を取得
-        $originalWlanInfo = netsh wlan show interfaces
+            # "There is X interface on the system:" の部分を削除（Xは数値）
+            $modifiedWlanInfo = $originalWlanInfo -replace "There is \d+ interface on the system:\s*", ""
 
-        # "There is X interface on the system:" の部分を削除（Xは数値）
-        $modifiedWlanInfo = $originalWlanInfo -replace "There is \d+ interface on the system:\s*", ""
+            # "項目名 : 値" の形式を "項目名=値" に変換（空白を削除）
+            $modifiedWlanInfo = $modifiedWlanInfo -replace "\s*:\s", "="
 
-        # "項目名 : 値" の形式を "項目名=値" に変換（空白を削除）
-        $modifiedWlanInfo = $modifiedWlanInfo -replace "\s*:\s", "="
+            # 空白行を削除し、データのある行だけを取得
+            $modifiedWlanInfo = $modifiedWlanInfo -split "`n" | Where-Object { $_ -match '\S' }
 
-        # 空白行を削除し、データのある行だけを取得
-        $modifiedWlanInfo = $modifiedWlanInfo -split "`n" | Where-Object { $_ -match '\S' }
+            # フィルタリングした各行を処理
+            $modifiedWlanInfo | ForEach-Object {
+                # 行の前後の空白を削除
+                $_ = $_.Trim()
 
-        # フィルタリングした各行を処理
-        $modifiedWlanInfo | ForEach-Object {
-            # 行の前後の空白を削除
-            $_ = $_.Trim()
+                # "キー=値" の形式に一致するかチェック
+                if ($_ -match "^(.*?)=(.*)$") {
+                    # キーと値を取得し、それぞれの前後の空白を削除
+                    $key = $matches[1].Trim()
+                    $value = $matches[2].Trim()
 
-            # "キー=値" の形式に一致するかチェック
-            if ($_ -match "^(.*?)=(.*)$") {
-                # キーと値を取得し、それぞれの前後の空白を削除
-                $key = $matches[1].Trim()
-                $value = $matches[2].Trim()
-
-                # ハッシュテーブルに追加
-                $this.wlanInfo[$key] = $value
+                    # ハッシュテーブルに追加
+                    $this.wlanInfo[$key] = $value
+                }
             }
+
+            # 登録済みのアクセスポイントの一覧を読み取る
+            $apTable = Import-Csv -Path "apTable.csv"
+
+            # Country = Japan の行から Name だけを取り出す
+            $this.matchedLineWithSSID = $apTable | Where-Object { $_.SSID -eq $this.wlaninfo["SSID"] }
+            if (-not $this.matchedLineWithSSID) {
+                throw "SSID が一致するアクセスポイントが見つかりません"
+            }
+    
+        } catch {
+            throw "GATEWAYが適切に設定されていないか、またはネットワークがつながっていません。"
         }
-
-        # アクセスポイントの一覧を読み取る
-        $apTable = Import-Csv -Path "apTable.csv"
-
-        # Country = Japan の行から Name だけを取り出す
-        $this.matchedLineWithSSID = $apTable | Where-Object { $_.SSID -eq $this.wlaninfo["SSID"] }
+    
     }
-
     excutePingToGateway() {
         # 1行を取り出す（今回は1つしかない前提）
         $lineExtractedFromSSID = $this.matchedLineWithSSID
@@ -67,21 +74,20 @@ class WlanInfoClass {
         $gateway = $lineExtractedFromSSID["GATEWAY"]
         $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         $logFile = "ping_result-$gateway.txt"
-        $count = 10
+        $count = 100
 
 
         for ($i = 1; $i -le $count; $i++) {
-            # $status = "Success"
-            # $latency = 0
             $pingResult = Test-Connection $gateway -Count 1
             $status = $pingResult.Status
             $latency = $pingResult.Latency
 
             if ($status -eq "Success") {
-                if ($latency -ge 300) {
-                    Write-Host "NG"
+                if ($latency -ge 10) {
+                    # Write-Host "NG"
+                    "$timestamp $gateway  NG - 応答あるが遅い - 応答時間: $latency ms" | Out-File -Append $logFile
                 } else {
-                    Write-Host "OK"
+                    # Write-Host "OK"
                     "$timestamp $gateway $status - 応答時間: $latency ms" | Out-File -Append $logFile
                 }
                 "$timestamp $gateway $status - 応答時間: $latency ms" | Out-File -Append $logFile
@@ -98,4 +104,5 @@ class WlanInfoClass {
 # クラスをインスタンス化し、WLAN情報を取得
 $wlaninfo = [WlanInfoClass]::new()
 
+# GATEWAYに対してpingを実行する
 $wlaninfo.excutePingToGateway()
