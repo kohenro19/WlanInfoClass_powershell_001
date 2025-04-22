@@ -56,7 +56,7 @@ class WlanInfoClass {
         }
     
     }
-    excutePingToGateway() {
+    [void]excutePingToGateway() {
         # 1行を取り出す（今回は1つしかない前提）
         $lineExtractedFromSSID = $this.matchedLineWithSSID
 
@@ -74,8 +74,13 @@ class WlanInfoClass {
         $gateway = $lineExtractedFromSSID["GATEWAY"]
         $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         $logFile = "ping_result-$gateway.txt"
-        $count = 100
+        $connectedSSID = $this.wlanInfo["SSID"] 
+        $connectedBSSID = $this.wlaninfo["AP BSSID"]
+        $count = 10
 
+        "############################################" | Out-File -Append $logFile
+        "$timestamp $connectedSSID につなっがています。" | Out-File -Append $logFile
+        "############################################" | Out-File -Append $logFile
 
         for ($i = 1; $i -le $count; $i++) {
             $pingResult = Test-Connection $gateway -Count 1
