@@ -79,7 +79,8 @@ class WlanInfoClass {
         $count = 10
 
         "############################################" | Out-File -Append $logFile
-        "$timestamp $connectedSSID につなっがています。" | Out-File -Append $logFile
+        "$connectedSSID　のSSIDに接続しています。" | Out-File -Append $logFile
+        "$connectedBSSID　のAPに接続しています。" | Out-File -Append $logFile
         "############################################" | Out-File -Append $logFile
 
         for ($i = 1; $i -le $count; $i++) {
